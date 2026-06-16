@@ -115,7 +115,7 @@ function Home() {
       <header className="header">
         <h1>Study Helper</h1>
         <p className="subtitle">
-          Paste or upload your course notes and Study Helper generates a
+          Paste or upload your course notes and the AI Study Helper generates a
           summary, the key concepts, and practice questions to help you study.
         </p>
       </header>
