@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import NoteInput from '../components/NoteInput';
 import Results from '../components/Results';
+import {FaRobot, FaScroll, FaClipboardList, FaQuestion, FaBug} from 'react-icons/fa' ;
 
 // Mock AI output. just some dummy info when you hit generate to test the UI we will repalce later.
 const MOCK_RESULTS = {
@@ -101,13 +102,16 @@ function Home() {
 
   return (
     <main className="container">
-      <header className="header">
-        <h1>Study Helper</h1>
-        <p className="subtitle">
-          Paste or upload your course notes and Study Helper generates a
-          summary, the key concepts, and practice questions to help you study.
-        </p>
-      </header>
+        <header className="header">
+          <h1>Study Helper</h1>
+          <div className="cajita">
+            <FaRobot className ="icon"/>
+            <p className="subtitle">
+                : Paste or upload your course notes and I will generate a
+                summary, key concepts, and practice questions to help you study!
+            </p>
+          </div>
+        </header>
 
       {/* Inputs textarea, file upload, button, error message */}
       <NoteInput
