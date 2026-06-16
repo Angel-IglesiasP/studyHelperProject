@@ -2,44 +2,23 @@ import { useState } from 'react';
 import NoteInput from '../components/NoteInput';
 import Results from '../components/Results';
 
-// Mock AI output. just some dummy info when you hit generate to test the UI we will repalce later.
-const MOCK_RESULTS = {
-  summary:
-    'These notes cover the core ideas of the topic: the main definitions, ' +
-    'why they matter, and how the key concepts connect to each other. ' +
-    'Focus your review on the relationships between terms rather than ' +
-    'memorizing each one in isolation.',
-  keywords: [
-    'Definition',
-    'Key concept',
-    'Cause and effect',
-    'Example',
-    'Application',
-  ],
-  questions: [
-    'In your own words, what is the main idea of these notes?',
-    'How do the key concepts relate to one another?',
-    'Can you give a real-world example of this topic?',
-    'What would happen if one of these factors changed?',
-  ],
-};
-
 function Home() {
 
   const [notes, setNotes] = useState(''); // text in the textarea
-  const [fileName, setFileName] = useState(''); // name of the uploaded file
+  const [file, setFile] = useState(null); // the actual File object to upload
+  const [fileName, setFileName] = useState(''); // name of the uploaded file (for display)
   const [loading, setLoading] = useState(false); // loading
   const [error, setError] = useState(''); // error handling and validation
   const [results, setResults] = useState(null); // null = nothing generated yet
 
   // Runs when the "Generate Study Guide" button is clicked.
-  function handleGenerate() {
-    // alidate: need EITHER notes OR a file (or both).
+  async function handleGenerate() {
+    // Validate: need EITHER notes OR a file (or both).
     const hasNotes = notes.trim() !== '';
-    const hasFile = fileName !== '';
+    const hasFile = file !== null;
     if (!hasNotes && !hasFile) {
       setError('Please paste your notes or upload a file first.');
-      return; 
+      return;
     }
 
     // Clear old state and show the loading message.
@@ -47,55 +26,87 @@ function Home() {
     setResults(null);
     setLoading(true);
 
+    try {
+      let blobName;
+      let uploadedName;
 
-    // TODO (backend): replace this setTimeout with a real API call, e.g.
-    //   const res = await fetch('/api/generate', {
-    //     method: 'POST',
-    //     headers: { 'Content-Type': 'application/json' },
-    //     body: JSON.stringify({ notes }),
-    //   });
-    //   const data = await res.json();
-    //   setResults(data);
-    setTimeout(() => {
-      setResults(MOCK_RESULTS);
+      // 1. If a file was chosen, upload it. The backend stores it in Blob Storage
+      //    and returns the blob name we reference in the next step.
+      if (file) {
+        const formData = new FormData();
+        formData.append('file', file);
+
+        const uploadRes = await fetch('/api/upload', {
+          method: 'POST',
+          body: formData,
+        });
+        if (!uploadRes.ok) {
+          const data = await uploadRes.json().catch(() => ({}));
+          throw new Error(data.error || 'Failed to upload the file.');
+        }
+        const data = await uploadRes.json();
+        blobName = data.blobName;
+        uploadedName = data.fileName;
+      }
+
+      // 2. Ask the backend to extract the text + run the LLM. Returns
+      //    { summary, keywords, questions } — exactly what <Results> expects.
+      const genRes = await fetch('/api/generate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ notes, blobName, fileName: uploadedName }),
+      });
+      if (!genRes.ok) {
+        const data = await genRes.json().catch(() => ({}));
+        throw new Error(data.error || 'Failed to generate the study guide.');
+      }
+
+      const studyGuide = await genRes.json();
+      setResults(studyGuide);
+    } catch (err) {
+      setError(err.message || 'Something went wrong. Please try again.');
+    } finally {
       setLoading(false);
-    }, 1000);
+    }
   }
 
-  // Validates and stores the chosen file. Real upload happens in the backend 
+  // Validates and stores the chosen file. The actual upload happens in handleGenerate.
   function handleFileChange(event) {
-    const file = event.target.files[0];
+    const selected = event.target.files[0];
 
     // if no file then reset
-    if (!file) {
+    if (!selected) {
+      setFile(null);
       setFileName('');
       return;
     }
 
-    // I hardcoded the allowed formats just in case lol also made a cap limit for the size. 
+    // I hardcoded the allowed formats just in case lol also made a cap limit for the size.
     const allowedExtensions = ['.doc', '.docx', '.pdf', '.ppt', '.pptx', '.txt'];
     const maxSizeBytes = 40 * 1024 * 1024; // 40 MB
 
     // Check the file extensions
-    const name = file.name.toLowerCase();
+    const name = selected.name.toLowerCase();
     const isAllowedType = allowedExtensions.some((ext) => name.endsWith(ext));
     if (!isAllowedType) {
       setError('Unsupported file type. Please upload a Word, PDF, PowerPoint, or .txt file.');
+      setFile(null);
       setFileName('');
       event.target.value = ''; // reset so the same file can be re-picked later
       return;
     }
 
     // Check the file size.
-    if (file.size > maxSizeBytes) {
+    if (selected.size > maxSizeBytes) {
       setError('That file is too large. Please upload a file smaller than 40 MB.');
+      setFile(null);
       setFileName('');
       event.target.value = '';
       return;
     }
 
-    // TODO (backend): read the file and send its contents to the API.
-    setFileName(file.name); // remember the file so Generate is enabled
+    setFile(selected); // keep the File so we can upload it on Generate
+    setFileName(selected.name); // remember the name so Generate is enabled / shown
     setError(''); // clear any previous error
   }
 
