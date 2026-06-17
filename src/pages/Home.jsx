@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import NoteInput from '../components/NoteInput';
 import Results from '../components/Results';
-import {FaRobot, FaScroll, FaClipboardList, FaQuestion, FaBug} from 'react-icons/fa' ;
+import {FaRobot} from 'react-icons/fa' ;
 
 function Home() {
 
