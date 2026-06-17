@@ -12,8 +12,14 @@ const generateRoute = require('./routes/generate');
 
 const app = express();
 
+const corsOptions = {
+  origin: process.env.ALLOWED_ORIGIN || "http://localhost:3000",
+  methods: ["GET", "POST"],
+};
+
 // Allow the React dev server (http://localhost:3000) to call this API.
 app.use(cors());
+app.use(cors(corsOptions));
 // Parse JSON request bodies (used by /api/generate).
 app.use(express.json({ limit: '1mb' }));
 
